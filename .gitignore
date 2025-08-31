@@ -1,0 +1,55 @@
+# ===========================
+# VSCode
+# ===========================
+.vscode/
+.history/
+*.code-workspace
+
+# ===========================
+# macOS
+# ===========================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ===========================
+# Windows
+# ===========================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===========================
+# Java / Maven
+# ===========================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Maven Wrapper
+.mvn/wrapper/maven-wrapper.jar
+
+# ===========================
+# IntelliJ IDEA
+# ===========================
+.idea/
+*.iws
+*.ipr
+
+# ===========================
+# Spring Boot specific
+# ===========================
+spring-boot-devtools-*.jar
+
+# ===========================
+# Others
+# ===========================
+*.env
+*.log
