@@ -3046,3 +3046,577 @@ public class TaskListServiceImpl implements TaskListService {
     }
 }
 ```
+
+## 7.6.2
+・pom.xml（修正）
+```
+<!-- Spring Security関連 -->
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.thymeleaf.extras</groupId>
+  <artifactId>thymeleaf-extras-springsecurity6</artifactId>
+</dependency>
+```
+
+・login.html
+```
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>ログイン</title>
+  <!-- Bootstrap CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container">
+  <div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title text-center mb-4">ログイン</h2>
+
+          <!-- エラーメッセージ -->
+          <div th:if="${param.error}" class="alert alert-danger" role="alert">
+            ログイン失敗しました
+          </div>
+          <div th:if="${param.logout}" class="alert alert-success" role="alert">
+            ログアウトしました
+          </div>
+          <!-- 登録成功メッセージ -->
+          <div th:if="${param.registered}" class="alert alert-success" role="alert">
+            ユーザー登録が完了しました。ログインしてください。
+          </div>
+
+          <form th:action="@{/login}" method="post">
+            <div class="mb-3">
+              <label for="username" class="form-label">ユーザー名</label>
+              <input type="text" class="form-control" id="username" name="username" placeholder="ユーザー名を入力"
+                     required>
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">パスワード</label>
+              <input type="password" class="form-control" id="password" name="password" placeholder="パスワードを入力"
+                     required>
+            </div>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary">ログイン</button>
+            </div>
+          </form>
+
+          <hr>
+
+          <div class="text-center">
+            <a th:href="@{/register}" class="btn btn-link">新規ユーザー登録</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS Bundle CDN -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+```
+
+・User.java
+```
+package com.webAppDev.tasklist.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "users")
+public class User {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Column(unique = true, nullable = false)
+  private String username;
+
+  @Column(nullable = false)
+  private String password;
+
+  private String role;
+
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
+  }
+
+  public String getRole() {
+    return role;
+  }
+
+  public void setRole(String role) {
+    this.role = role;
+  }
+}
+```
+
+・UserRepository.java
+```
+package com.webAppDev.tasklist.repository;
+
+import com.webAppDev.tasklist.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+  Optional<User> findByUsername(String username);
+}
+```
+
+・CustomUserDetailsService.java
+```
+package com.webAppDev.tasklist.service;
+
+import com.webAppDev.tasklist.repository.UserRepository;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+
+  private final UserRepository userRepository;
+  public CustomUserDetailsService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    return userRepository.findByUsername(username)
+            .map(user -> User.withUsername(user.getUsername())
+                    .password(user.getPassword())
+                    .roles(user.getRole())
+                    .build())
+            .orElseThrow(() -> new UsernameNotFoundException("ユーザーが存在しません: " + username));
+  }
+}
+```
+
+・LoginController.java
+```
+package com.webAppDev.tasklist.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class LoginController {
+  @GetMapping("/login")
+  public String login() {
+    return "login";
+  }
+}
+```
+
+・SecurityConfig.java
+```
+package com.webAppDev.tasklist.config;
+
+import com.webAppDev.tasklist.service.CustomUserDetailsService;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class SecurityConfig {
+
+  private final CustomUserDetailsService userDetailsService;
+  public SecurityConfig(CustomUserDetailsService userDetailsService) {
+    this.userDetailsService = userDetailsService;
+  }
+
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
+
+  // DaoAuthenticationProvider を使ってDB認証
+  @Bean
+  public DaoAuthenticationProvider authenticationProvider() {
+    DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+    authProvider.setUserDetailsService(userDetailsService);
+    authProvider.setPasswordEncoder(passwordEncoder());
+    return authProvider;
+  }
+
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+            .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/login", "/register", "/h2-console/**").permitAll()
+                    .anyRequest().authenticated()
+            )
+            .formLogin(form -> form
+                    .loginPage("/login")
+                    .defaultSuccessUrl("/tasklist", true)
+                    .permitAll()
+            )
+            .logout(logout -> logout
+                    .logoutSuccessUrl("/login?logout")
+                    .permitAll()
+            );
+
+    // H2コンソール用設定
+    http.csrf(csrf -> csrf.disable());
+    http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+
+    return http.build();
+  }
+}
+```
+
+## 7.6.3
+・usersテーブル作成のSQL
+```
+CREATE TABLE users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(255)
+);
+```
+
+## 7.6.4
+・register.html
+```
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>ユーザー登録</title>
+  <!-- Bootstrap CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container">
+  <div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title text-center mb-4">ユーザー登録</h2>
+
+          <!-- エラーメッセージ -->
+          <div th:if="${error}" class="alert alert-danger" role="alert">
+            <p th:text="${error}"></p>
+          </div>
+
+          <form th:action="@{/register}" th:object="${user}" method="post">
+            <div class="mb-3">
+              <label for="username" class="form-label">ユーザー名</label>
+              <input type="text" class="form-control" id="username" th:field="*{username}"
+                     placeholder="ユーザー名を入力" required>
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">パスワード</label>
+              <input type="password" class="form-control" id="password" th:field="*{password}"
+                     placeholder="パスワードを入力" required>
+            </div>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-success">登録</button>
+            </div>
+          </form>
+
+          <hr>
+
+          <div class="text-center">
+            <a th:href="@{/login}" class="btn btn-link">ログイン画面へ</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS Bundle CDN -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+```
+
+・UserRegistrationForm.java
+```
+package com.webAppDev.tasklist.dto;
+
+public class UserRegistrationForm {
+  private String username;
+  private String password;
+  private String role; // 登録時は固定で "USER" にするのが一般的
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
+  }
+
+  public String getRole() {
+    return role;
+  }
+
+  public void setRole(String role) {
+    this.role = role;
+  }
+}
+```
+
+・RegistrationController.java
+```
+package com.webAppDev.tasklist.controller;
+
+import com.webAppDev.tasklist.dto.UserRegistrationForm;
+import com.webAppDev.tasklist.entity.User;
+import com.webAppDev.tasklist.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+
+@Controller
+public class RegistrationController {
+
+  private final UserRepository userRepository;
+  private final PasswordEncoder passwordEncoder;
+
+  public RegistrationController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    this.userRepository = userRepository;
+    this.passwordEncoder = passwordEncoder;
+  }
+
+  // 登録画面表示
+  @GetMapping("/register")
+  public String showRegistrationForm(Model model) {
+    model.addAttribute("user", new UserRegistrationForm());
+    return "register";
+  }
+
+  // 登録処理
+  @PostMapping("/register")
+  public String registerUser(@ModelAttribute("user") UserRegistrationForm dto, Model model) {
+    if (userRepository.findByUsername(dto.getUsername()).isPresent()) {
+      model.addAttribute("error", "ユーザー名はすでに使われています");
+      return "register";
+    }
+
+    User user = new User();
+    user.setUsername(dto.getUsername());
+    user.setPassword(passwordEncoder.encode(dto.getPassword())); // BCryptで暗号化
+    user.setRole("USER");
+    userRepository.save(user);
+
+    return "redirect:/login?registered"; // 登録後はログイン画面へ
+  }
+}
+```
+
+## 7.6.5
+・tasklist.html（追記）
+```
+</head>
+<body class="bg-light">
+
+<!-- ナビバー -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="#">タスク管理アプリ</a>
+        <div class="d-flex ms-auto align-items-center">
+            <span class="me-3" th:text="${#authentication.name}">ユーザー名</span>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="btn btn-outline-danger btn-sm">ログアウト</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+```
+
+## 7.7.1
+・ビルドコマンド
+```
+./mvnw clean package
+```
+
+・Jar実行コマンド
+```
+java -jar target/*.jar
+```
+
+・プロセスを探す
+```
+ps
+```
+
+・プロセスをキルする
+```
+kill {プロセスID}
+```
+
+## 7.7.2.2
+・Dockerfile
+```
+# ===============================
+# 1. ビルドステージ
+# ===============================
+FROM maven:3.9.9-eclipse-temurin-24 AS build
+
+WORKDIR /app
+
+# 依存関係キャッシュ用
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# ソースコードコピー
+COPY src ./src
+
+# JARをビルド
+RUN mvn package -DskipTests
+
+# ===============================
+# 2. 実行ステージ（軽量）
+# ===============================
+FROM eclipse-temurin:24-jre-alpine
+
+WORKDIR /app
+
+# ビルド済みJARをコピー
+COPY --from=build /app/target/*.jar app.jar
+
+# Render用ポート設定
+ENV SERVER_PORT=10000
+EXPOSE 10000
+
+# アプリ起動
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+・.dockerignore
+```
+target/
+.git
+.idea
+```
+
+## 7.7.2.3
+・GitリポジトリへPushする
+```
+git init
+git add .
+git commit -m "first commit"
+git remote add origin {URL}
+git push -u origin main
+```
+
+## 7.7.3.2
+・DB接続URL
+```
+jdbc:postgresql://{Hostname}.oregon-postgres.render.com/{Database}
+```
+
+・create文
+```
+CREATE TABLE task (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(10) NOT NULL,
+    detail VARCHAR(100),
+    deadline TIMESTAMP,
+    state BOOLEAN NOT NULL
+);
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(255)
+);
+```
+
+## 7.7.3.3
+・application.properties（修正）
+```
+spring.application.name=tasklist
+
+# Enable H2 console
+#spring.h2.console.enabled=true
+#spring.h2.console.path=/h2-console
+
+# Data source setup
+#spring.datasource.driverClassName=org.h2.Driver
+#spring.datasource.url=jdbc:h2:./h2db/taskdb
+#spring.datasource.username=sa
+#spring.datasource.password=12345
+spring.datasource.url=jdbc:postgresql://{Hostname}/{Database}
+spring.datasource.username={Username}
+spring.datasource.password={Password}
+
+# Linking Spring Data JPA to H2
+#spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+
+# Linking Spring Data JPA to PostgreSQL
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+```
+
+・pom.xml（追記）
+```
+<!-- PostgreSQL -->
+<dependency>
+  <groupId>org.postgresql</groupId>
+  <artifactId>postgresql</artifactId>
+  <scope>runtime</scope>
+</dependency>
+```
+
+・コマンド
+```
+git add .
+git commit -m "add PostgreSQL config"
+git push
+```
