@@ -971,8 +971,8 @@ console.log("これは sampleScript から実行しています");
 ```
 
 ## 7.3
-```
 ・buttonAlert.html
+```
 <!DOCTYPE html>
 <html lang="ja">
 <head>
