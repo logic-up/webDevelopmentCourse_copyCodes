@@ -924,3 +924,87 @@ body {
 <!-- Bootstrap JSの読み込み -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 ```
+
+## 7.2.1
+・jsSample.html
+```
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <script>
+    console.log("Hello World!");
+  </script>
+</head>
+
+<body>
+
+  <h1>JavaScriptサンプル</h1>
+
+</body>
+
+</html>
+```
+
+## 7.2.2
+・sampleScript.js
+```
+console.log("これは sampleScript から実行しています");
+```
+
+・jsSample.html（修正）
+```
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <script src="sampleScript.js"></script>
+</head>
+
+<body>
+
+  <h1>JavaScriptサンプル</h1>
+
+</body>
+
+</html>
+```
+
+## 7.3
+```
+・buttonAlert.html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+</head>
+<body>
+  <button id="btn">押してね</button>
+
+  <script>
+    // 変数
+    let name = "tanaka";
+    let age = 25;
+    let message = "";
+
+    // 条件分岐
+    if(age > 18) {
+      message = name + " は成人です";
+    }
+    else {
+      message = name + " は未成年です";
+    }
+
+    // 繰り返し
+    for(let i = 0; i < 5; i++) {
+      console.log(message + ": " + i);
+    }
+
+    // DOM操作(HTMLをコードから操作)
+    let button = document.getElementById("btn");
+    button.addEventListener("click", () => {
+      alert(message);
+    });
+  </script>
+</body>
+</html>
+```
